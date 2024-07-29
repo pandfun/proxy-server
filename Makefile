@@ -1,8 +1,5 @@
 build:
-	@go build -o bin/proxy-server cmd/main.go
-
-test:
-	@go test -v ./...
+	@go build -o bin/proxy_server cmd/main.go
 
 run: build
-	@./bin/proxy-server
+	@./bin/proxy_server

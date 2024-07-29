@@ -7,23 +7,24 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type ProxyServer struct {
+type Proxy struct {
 	addr string
 }
 
-func NewProxyServer(addr string) *ProxyServer {
-	return &ProxyServer{
-		addr: addr,
-	}
+// Proxy server constructor
+func NewProxyServer(addr string) *Proxy {
+	return &Proxy{addr: addr}
 }
 
-func (p *ProxyServer) Run() error {
+// Start the proxy server
+func (p *Proxy) Run() error {
 	router := mux.NewRouter()
-	subrouter := router.PathPrefix("/proxy/").Subrouter()
 
-	RegisterRoutes(subrouter)
+	router.HandleFunc("/proxy", proxyHandler)
+	router.HandleFunc("/", invalidPathHandler)
 
-	log.Println("Proxy: Listening on", p.addr)
-
+	log.Printf("Server is running on %v", p.addr)
+	
 	return http.ListenAndServe(p.addr, router)
 }
+
