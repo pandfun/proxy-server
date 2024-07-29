@@ -8,8 +8,8 @@ import (
 
 func main() {
 	proxyServer := proxy.NewProxyServer(":9000")
-
+	
 	if err := proxyServer.Run(); err != nil {
-		log.Fatalf("Error starting the proxy server: %v", err)
+		log.Fatal("error in proxy server", err.Error())
 	}
 }
