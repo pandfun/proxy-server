@@ -2,9 +2,9 @@ package proxy
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/url"
 
 	"github.com/pandfun/proxy-server/utils"
 )
@@ -26,29 +26,49 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Print("Incoming request ", targetUrl)
 
-	// parse the given url to check validity
-	parsedUrl, err := url.Parse(targetUrl)
+	status, err := validateURL(targetUrl)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("failed to parse the url"))
-		log.Print("Failed to parse the url", targetUrl)
+		utils.WriteError(w, status, err)
+	}
+
+	proxyReq, err := http.NewRequest(r.Method, targetUrl, r.Body)
+	if err != nil {
+		log.Println("Failed to create a new request")
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("failed to create a new request"))
 		return
 	}
 
-	// If the url has no scheme or host, it's invalid
-	if parsedUrl.Scheme == "" || parsedUrl.Host == "" {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid url"))
-		return
-	}
+	copyHeader(proxyReq.Header, r.Header)
 
-	// get the data from the remote web server
-	resp, err := http.Get(targetUrl)
+	client := &http.Client{}
+
+
+	resp, err := client.Do(proxyReq)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("failed to make get request to target url"))
-		log.Print("Failed to make get request", targetUrl)
+		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	defer resp.Body.Close()
 
-	utils.WriteResponse(w, resp)
+
+	copyHeader(w.Header(), resp.Header)
+
+	w.WriteHeader(resp.StatusCode)
+
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+	}
+
+	w.Write(respBody)
+
+	// if !strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+	// 	w.Write(respBody)
+	// 	return
+	// }
+
+	// modifiedBody := handleRelativeLinks(respBody, r.Host, targetUrl)
+	// w.Write(modifiedBody)
 }
